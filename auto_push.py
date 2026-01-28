@@ -30,11 +30,11 @@ def run_git(cmd, desc, check=True):
             else:
                 print(f"경고: {result.stderr.strip()}")
         if result.returncode == 0:
-            print(f"✓ {desc} 완료\n")
+            print(f"[OK] {desc} 완료\n")
             return True
         else:
             if check:
-                print(f"⚠ {desc} 실패 (코드: {result.returncode})\n")
+                print(f"[!!] {desc} 실패 (코드: {result.returncode})\n")
             return False
     except Exception as e:
         print(f"오류: {e}\n")
@@ -71,7 +71,7 @@ print()
 
 # 5. 커밋 생성
 print("[5/6] 커밋 생성...")
-commit_msg = "feat: Streamlit 웹 버전 추가 및 웹 배포 안내 문서"
+commit_msg = "fix: Streamlit 웹 앱 알림 기능 개선 - 홈 화면 배지, 새로고침 버튼 추가"
 result = run_git(["git", "commit", "-m", commit_msg], "커밋 생성", check=False)
 if not result:
     print("커밋할 변경사항이 없거나 이미 커밋됨.\n")
@@ -96,4 +96,14 @@ print("  -> New app -> Repository: rlawldks56/making.nj.friend")
 print("  -> Main file: streamlit_app.py")
 print("  -> Deploy!")
 print()
-input("아무 키나 누르면 종료합니다...")
+# 브라우저로 Streamlit Cloud 열기 (다음 단계 자동 안내)
+try:
+    import webbrowser
+    webbrowser.open("https://share.streamlit.io")
+    print("Streamlit Cloud 페이지를 브라우저에서 열었습니다.")
+except Exception:
+    pass
+try:
+    input("아무 키나 누르면 종료합니다...")
+except EOFError:
+    pass

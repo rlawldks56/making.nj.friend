@@ -217,16 +217,36 @@ def render_home():
     st.markdown("### ✨ 환영합니다! ✨")
     st.markdown(f"💝 **{pd.get('name','')}님**  |  📷 @{pd.get('instagram','')}  |  🎭 {pd.get('mbti','')}")
     st.markdown("---")
-    if st.button("💝 친구 찾기"):
-        st.session_state.page = "matching"
-        st.rerun()
-    if st.button("💌 나에게 온 알림"):
-        st.session_state.page = "notifications"
-        st.rerun()
-    if st.button("💕 매칭된 친구"):
+    
+    # 알림 개수 확인
+    fb = firebase()
+    notification_count = 0
+    if fb:
+        try:
+            matchings = fb.get_matchings_for_user(pd.get("user_id"))
+            notification_count = len([m for m in matchings if m.get("receiver_id") == pd.get("user_id") and m.get("status") == "pending"])
+        except Exception:
+            pass
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        if st.button("💝 친구 찾기", use_container_width=True):
+            st.session_state.page = "matching"
+            st.rerun()
+    with col2:
+        if notification_count > 0:
+            if st.button(f"💌 나에게 온 알림 ({notification_count})", use_container_width=True, type="primary"):
+                st.session_state.page = "notifications"
+                st.rerun()
+        else:
+            if st.button("💌 나에게 온 알림", use_container_width=True):
+                st.session_state.page = "notifications"
+                st.rerun()
+    
+    if st.button("💕 매칭된 친구", use_container_width=True):
         st.session_state.page = "matched_friends"
         st.rerun()
-    if st.button("💬 채팅창"):
+    if st.button("💬 채팅창", use_container_width=True):
         st.session_state.page = "chat_list"
         st.rerun()
     st.markdown("---")
@@ -249,6 +269,11 @@ def render_matching():
     attempts = fb.get_matching_attempts(uid, today)
     st.markdown(f"### 친구 찾기 (남은 횟수: {5 - attempts}회)")
     grade_opt = st.selectbox("매칭 학년", ["전체", "1학년", "2학년", "3학년"])
+    
+    # 매칭 결과를 세션에 저장
+    if "matched_user" not in st.session_state:
+        st.session_state.matched_user = None
+    
     if st.button("랜덤 매칭 시작") and attempts < 5:
         users = fb.get_all_users()
         target_grade = None if grade_opt == "전체" else int(grade_opt[0])
@@ -258,17 +283,51 @@ def render_matching():
             cand = [u for u in cand if str(u.get("grade", "")).replace("학년", "") == str(target_grade)]
         if not cand:
             st.warning("매칭 가능한 친구가 없습니다.")
+            st.session_state.matched_user = None
         else:
             other = random.choice(cand)
-            st.success(f"매칭된 친구: **{other.get('nickname','')}** (@{other.get('instagram','')}) | {other.get('grade','')}학년 | {other.get('mbti','')}")
-            if st.button("친구 요청 보내기"):
-                md = {"sender_id": uid, "sender_instagram": insta_me, "receiver_id": other.get("user_id"), "receiver_instagram": other.get("instagram", ""), "status": "pending", "matched_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+            st.session_state.matched_user = other
+            st.rerun()
+    
+    # 매칭된 친구 표시 및 요청 보내기
+    if st.session_state.matched_user:
+        other = st.session_state.matched_user
+        st.success(f"매칭된 친구: **{other.get('nickname','')}** (@{other.get('instagram','')}) | {other.get('grade','')}학년 | {other.get('mbti','')}")
+        if st.button("친구 요청 보내기", type="primary"):
+            try:
+                md = {
+                    "sender_id": uid,
+                    "sender_instagram": (pd.get("instagram") or "").replace("@", ""),
+                    "receiver_id": other.get("user_id"),
+                    "receiver_instagram": (other.get("instagram") or "").replace("@", ""),
+                    "status": "pending",
+                    "matched_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
                 if "matching_id" not in md:
                     md["matching_id"] = str(__import__("uuid").uuid4())
-                fb.save_matching(md)
-                fb.increment_matching_attempts(uid, today)
-                st.success("친구 요청을 보냈습니다!")
+                
+                # 저장 전에 중복 확인
+                existing = fb.get_matchings_for_user(uid)
+                duplicate = any(
+                    (m.get("sender_id") == uid and m.get("receiver_id") == other.get("user_id") and m.get("status") == "pending") or
+                    (m.get("receiver_id") == uid and m.get("sender_id") == other.get("user_id") and m.get("status") == "pending")
+                    for m in existing
+                )
+                
+                if duplicate:
+                    st.warning("이미 보낸 요청이 있거나 받은 요청이 있습니다.")
+                else:
+                    fb.save_matching(md)
+                    fb.increment_matching_attempts(uid, today)
+                    st.success(f"✅ 친구 요청을 보냈습니다! @{other.get('instagram','')}님에게 알림이 갑니다.")
+                    st.info("💡 상대방은 '나에게 온 알림' 메뉴에서 요청을 확인할 수 있습니다.")
+                    st.session_state.matched_user = None
+                    st.rerun()
+            except Exception as e:
+                st.error(f"요청 보내기 실패: {e}")
+    
     if st.button("← 홈으로"):
+        st.session_state.matched_user = None
         st.session_state.page = "home"
         st.rerun()
 
@@ -276,19 +335,55 @@ def render_notifications():
     pd = st.session_state.profile_data
     fb = firebase()
     st.markdown("### 💌 나에게 온 알림")
+    
+    # 새로고침 버튼
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("🔄 새로고침"):
+            st.rerun()
+    
     if fb:
-        matchings = fb.get_matchings_for_user(pd.get("user_id"))
-        recv = [m for m in matchings if m.get("receiver_id") == pd.get("user_id") and m.get("status") == "pending"]
-        for m in recv:
-            with st.expander(f"💝 {m.get('sender_instagram','')}님의 매칭 요청"):
-                if st.button("수락", key=m.get("matching_id", "")):
-                    m["status"] = "accepted"
-                    m["matched_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    fb.update_matching(m)
-                    st.success("수락했습니다!")
-                    st.rerun()
-        if not recv:
-            st.info("새로운 알림이 없습니다.")
+        try:
+            matchings = fb.get_matchings_for_user(pd.get("user_id"))
+            recv = [m for m in matchings if m.get("receiver_id") == pd.get("user_id") and m.get("status") == "pending"]
+            
+            if recv:
+                st.success(f"📬 새로운 알림 {len(recv)}개가 있습니다!")
+                for m in recv:
+                    sender_insta = m.get('sender_instagram', '알 수 없음')
+                    matched_time = m.get('matched_at', '')
+                    with st.expander(f"💝 @{sender_insta}님의 매칭 요청" + (f" ({matched_time})" if matched_time else "")):
+                        # 보낸 사람 정보 가져오기
+                        users = fb.get_all_users()
+                        sender = next((u for u in users if u.get("user_id") == m.get("sender_id")), {})
+                        st.write(f"**이름**: {sender.get('name', '알 수 없음')}")
+                        st.write(f"**별명**: {sender.get('nickname', '알 수 없음')}")
+                        st.write(f"**인스타**: @{sender_insta}")
+                        st.write(f"**학년**: {sender.get('grade', '알 수 없음')}학년")
+                        st.write(f"**MBTI**: {sender.get('mbti', '알 수 없음')}")
+                        st.write("---")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("✅ 수락", key=f"accept_{m.get('matching_id', '')}", type="primary", use_container_width=True):
+                                m["status"] = "accepted"
+                                m["matched_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                fb.update_matching(m)
+                                st.success("✅ 수락했습니다! 이제 채팅할 수 있습니다.")
+                                st.rerun()
+                        with col2:
+                            if st.button("❌ 거절", key=f"reject_{m.get('matching_id', '')}", use_container_width=True):
+                                m["status"] = "rejected"
+                                fb.update_matching(m)
+                                st.info("거절했습니다.")
+                                st.rerun()
+            else:
+                st.info("새로운 알림이 없습니다. 친구 요청이 오면 여기에 표시됩니다.")
+        except Exception as e:
+            st.error(f"알림을 불러오는 중 오류가 발생했습니다: {e}")
+    else:
+        st.warning("데이터베이스 연결이 없습니다. 테스트 모드로 실행 중입니다.")
+    
+    st.markdown("---")
     if st.button("← 홈으로"):
         st.session_state.page = "home"
         st.rerun()
