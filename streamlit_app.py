@@ -390,10 +390,7 @@ def render_notifications():
                         # 보낸 사람 정보 가져오기
                         users = fb.get_all_users()
                         sender = next((u for u in users if u.get("user_id") == m.get("sender_id")), {})
-                        st.write(f"**이름**: {sender.get('name', '알 수 없음')}")
                         st.write(f"**별명**: {sender.get('nickname', '알 수 없음')}")
-                        st.write(f"**인스타**: @{sender_insta}")
-                        st.write(f"**학년**: {sender.get('grade', '알 수 없음')}학년")
                         st.write(f"**MBTI**: {sender.get('mbti', '알 수 없음')}")
                         st.write("---")
                         col1, col2 = st.columns(2)

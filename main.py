@@ -1657,27 +1657,7 @@ class FriendFinderApp:
             )
             info_frame.pack(pady=10, padx=20)
             
-            # 인스타그램
-            insta_text = f"📷 @{matched_user.get('instagram', '알 수 없음')}"
-            insta_label = ctk.CTkLabel(
-                info_frame,
-                text=insta_text,
-                font=("Pretendard", 16),
-                text_color=self.colors['text']
-            )
-            insta_label.pack(pady=8)
-            
-            # 학년
-            grade_text = f"📚 {matched_user.get('grade', '?')}학년"
-            grade_label = ctk.CTkLabel(
-                info_frame,
-                text=grade_text,
-                font=("Pretendard", 16),
-                text_color=self.colors['text']
-            )
-            grade_label.pack(pady=8)
-            
-            # MBTI
+            # MBTI만 표시
             mbti_text = f"🎭 MBTI: {matched_user.get('mbti', '?')}"
             mbti_label = ctk.CTkLabel(
                 info_frame,
@@ -1686,16 +1666,6 @@ class FriendFinderApp:
                 text_color=self.colors['text']
             )
             mbti_label.pack(pady=8)
-            
-            # 성별
-            gender_text = f"👤 {matched_user.get('gender', '?')}"
-            gender_label = ctk.CTkLabel(
-                info_frame,
-                text=gender_text,
-                font=("Pretendard", 16),
-                text_color=self.colors['text']
-            )
-            gender_label.pack(pady=8)
             
             # 버튼 프레임
             button_frame = ctk.CTkFrame(
