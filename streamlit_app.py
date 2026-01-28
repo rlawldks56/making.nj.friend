@@ -229,6 +229,11 @@ def render_mbti():
                 uid = fb.save_profile(pd)
                 if uid:
                     st.session_state.profile_data = {**pd, "user_id": uid, "instagram": pd["instagram"], "grade": pd["grade"]}
+                    # 새 프로필 생성 후에도 "기존 프로필로 로그인"에서 자동완성되도록 저장
+                    st.session_state.saved_login_name = pd.get("name", "")
+                    st.session_state.saved_login_nickname = pd.get("nickname", "")
+                    insta_saved = pd.get("instagram", "")
+                    st.session_state.saved_login_insta = ("@" + insta_saved) if insta_saved and not insta_saved.startswith("@") else (insta_saved or "@")
                     st.session_state.page = "home"
                     st.rerun()
             else:
