@@ -77,6 +77,14 @@ class FirebaseManager:
                 with open(self.TEST_DATA_FILE, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 print(f"테스트 데이터 파일 로드 완료: {len(data.get('students', []))}명의 학생 데이터")
+                # 구버전 파일 호환: 없으면 기본 키 추가
+                if 'matchings' not in data:
+                    data['matchings'] = []
+                if 'matching_attempts' not in data:
+                    # { "<user_id>_<YYYY-MM-DD>": {"attempts": int, "last_updated": "..."} }
+                    data['matching_attempts'] = {}
+                if 'messages' not in data:
+                    data['messages'] = []
                 return data
         except Exception as e:
             print(f"테스트 데이터 파일 로드 실패: {str(e)}")
@@ -84,7 +92,9 @@ class FirebaseManager:
         # 파일이 없거나 로드 실패 시 기본 데이터 구조 반환
         return {
             'students': [],
-            'matchings': []
+            'matchings': [],
+            'matching_attempts': {},
+            'messages': []
         }
 
     def save_test_data(self):
@@ -398,7 +408,9 @@ class FirebaseManager:
         """특정 날짜의 매칭 시도 횟수 조회"""
         try:
             if self.test_mode:
-                return 0
+                key = f"{user_id}_{date}"
+                attempts_data = (self.test_data.get('matching_attempts') or {}).get(key, {})
+                return int(attempts_data.get('attempts', 0) or 0)
                 
             doc = self.db.collection('matching_attempts').document(f"{user_id}_{date}").get()
             if doc.exists:
@@ -412,6 +424,17 @@ class FirebaseManager:
         """매칭 시도 횟수 증가"""
         try:
             if self.test_mode:
+                key = f"{user_id}_{date}"
+                if 'matching_attempts' not in self.test_data or not isinstance(self.test_data['matching_attempts'], dict):
+                    self.test_data['matching_attempts'] = {}
+                current = int(self.test_data['matching_attempts'].get(key, {}).get('attempts', 0) or 0)
+                self.test_data['matching_attempts'][key] = {
+                    'user_id': user_id,
+                    'date': date,
+                    'attempts': current + 1,
+                    'last_updated': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+                self.save_test_data()
                 return True
                 
             doc_ref = self.db.collection('matching_attempts').document(f"{user_id}_{date}")
@@ -440,6 +463,16 @@ class FirebaseManager:
         """매칭 시도 횟수 리셋"""
         try:
             if self.test_mode:
+                key = f"{user_id}_{date}"
+                if 'matching_attempts' not in self.test_data or not isinstance(self.test_data['matching_attempts'], dict):
+                    self.test_data['matching_attempts'] = {}
+                self.test_data['matching_attempts'][key] = {
+                    'user_id': user_id,
+                    'date': date,
+                    'attempts': 0,
+                    'last_updated': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+                self.save_test_data()
                 return True
                 
             doc_ref = self.db.collection('matching_attempts').document(f"{user_id}_{date}")

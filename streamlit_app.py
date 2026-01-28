@@ -306,14 +306,17 @@ def render_matching():
     uid = pd.get("user_id")
     today = datetime.now().strftime("%Y-%m-%d")
     attempts = fb.get_matching_attempts(uid, today)
-    st.markdown(f"### 친구 찾기 (남은 횟수: {5 - attempts}회)")
+    remaining = max(0, 5 - attempts)
+    st.markdown(f"### 친구 찾기 (남은 횟수: {remaining}회)")
+    if attempts >= 5:
+        st.warning("오늘의 매칭 5회를 모두 사용했어요. 0시 0분(자정)이 되면 다시 5회로 채워집니다.")
     grade_opt = st.selectbox("매칭 학년", ["전체", "1학년", "2학년", "3학년"])
     
     # 매칭 결과를 세션에 저장
     if "matched_user" not in st.session_state:
         st.session_state.matched_user = None
     
-    if st.button("랜덤 매칭 시작") and attempts < 5:
+    if st.button("랜덤 매칭 시작", disabled=(attempts >= 5)) and attempts < 5:
         users = fb.get_all_users()
         target_grade = None if grade_opt == "전체" else int(grade_opt[0])
         insta_me = (pd.get("instagram") or "").replace("@", "")
@@ -361,6 +364,7 @@ def render_matching():
                     st.success(f"✅ 친구 요청을 보냈습니다! @{other.get('instagram','')}님에게 알림이 갑니다.")
                     st.info("💡 상대방은 '나에게 온 알림' 메뉴에서 요청을 확인할 수 있습니다.")
                     st.session_state.matched_user = None
+                    # 횟수/화면 즉시 갱신
                     st.rerun()
             except Exception as e:
                 st.error(f"요청 보내기 실패: {e}")
