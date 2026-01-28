@@ -77,8 +77,13 @@ if not result:
     print("커밋할 변경사항이 없거나 이미 커밋됨.\n")
 print()
 
-# 6. 브랜치 이름 변경 및 푸시
-print("[6/6] GitHub로 푸시...")
+# 6. 원격 변경사항 가져오기 및 푸시
+print("[6/7] 원격 변경사항 가져오기...")
+run_git(["git", "pull", "--rebase", "origin", "main"], "원격 변경사항 가져오기", check=False)
+print()
+
+# 7. 브랜치 이름 변경 및 푸시
+print("[7/7] GitHub로 푸시...")
 run_git(["git", "branch", "-M", "main"], "브랜치 이름 변경", check=False)
 result = run_git(["git", "push", "-u", "origin", "main"], "GitHub로 푸시", check=False)
 if not result:
