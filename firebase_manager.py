@@ -12,12 +12,12 @@ class FirebaseManager:
     TEST_DATA_FILE = "test_data.json"  # 테스트 데이터를 저장할 파일
     _initialized = False
     
-    def __new__(cls, test_mode=None):
+    def __new__(cls, test_mode=None, credential_dict=None):
         if cls._instance is None:
             cls._instance = super(FirebaseManager, cls).__new__(cls)
         return cls._instance
     
-    def __init__(self, test_mode=None):
+    def __init__(self, test_mode=None, credential_dict=None):
         if self._initialized:
             return
             
@@ -33,11 +33,15 @@ class FirebaseManager:
         try:
             # Firebase 앱이 이미 초기화되어 있는지 확인
             if not firebase_admin._apps:
-                if not os.path.exists(FIREBASE_CONFIG):
+                # credential_dict 있으면(Streamlit Secrets 등) dict로 인증, 없으면 파일 경로 사용
+                if credential_dict is not None:
+                    cred = credentials.Certificate(credential_dict)
+                elif not os.path.exists(FIREBASE_CONFIG):
                     raise FileNotFoundError(f"Firebase 설정 파일을 찾을 수 없습니다: {FIREBASE_CONFIG}")
+                else:
+                    cred = credentials.Certificate(FIREBASE_CONFIG)
 
                 try:
-                    cred = credentials.Certificate(FIREBASE_CONFIG)
                     firebase_admin.initialize_app(cred, {
                         'databaseURL': DATABASE_URL
                     })

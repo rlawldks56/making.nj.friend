@@ -48,7 +48,7 @@ git status
 echo.
 
 echo [4/5] 커밋 생성...
-git commit -m "feat: 능친 만들기 - 채팅, 알림, 매칭 기능 완성 및 보안 강화" 2>nul
+git commit -m "feat: Streamlit 웹 버전 추가 및 웹 배포 안내 문서" 2>nul
 if %ERRORLEVEL% equ 0 (
     echo 커밋 완료.
 ) else (
