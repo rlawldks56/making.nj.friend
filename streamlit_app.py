@@ -59,6 +59,13 @@ if "mbti_answers" not in st.session_state:
     st.session_state.mbti_answers = []
 if "mbti_step" not in st.session_state:
     st.session_state.mbti_step = 0
+# 저장된 로그인 정보
+if "saved_login_name" not in st.session_state:
+    st.session_state.saved_login_name = ""
+if "saved_login_nickname" not in st.session_state:
+    st.session_state.saved_login_nickname = ""
+if "saved_login_insta" not in st.session_state:
+    st.session_state.saved_login_insta = "@"
 
 MBTI_QUESTIONS = [
     {"q": "시험이 끝난 후 귀사하였다. 기숙사에 왔을 때 나는?", "a": ["시험도 끝났는데 놀아야지!! 애들 방으로 놀러가야지~~", "애들이랑 노는 것도 좋지만 오늘은 혼자 쉬어야지 침대와 몰아일체!"], "t": ["E", "I"]},
@@ -101,32 +108,59 @@ def render_login_options():
 
 def render_login():
     st.markdown("### 프로필 로그인")
-    name = st.text_input("이름", placeholder="본인 이름")
-    nickname = st.text_input("별명", placeholder="기존 별명")
-    insta = st.text_input("인스타그램 아이디", placeholder="@아이디", value="@")
+    
+    # 저장된 로그인 정보가 있으면 자동으로 채워주기
+    saved_name = st.session_state.get("saved_login_name", "")
+    saved_nickname = st.session_state.get("saved_login_nickname", "")
+    saved_insta = st.session_state.get("saved_login_insta", "@")
+    
+    # 저장된 정보가 있으면 안내 표시
+    if saved_name or saved_nickname or (saved_insta and saved_insta != "@"):
+        st.info("💾 저장된 로그인 정보를 불러왔습니다. 수정하거나 그대로 사용하세요.")
+    
+    name = st.text_input("이름", placeholder="본인 이름", value=saved_name)
+    nickname = st.text_input("별명", placeholder="기존 별명", value=saved_nickname)
+    insta = st.text_input("인스타그램 아이디", placeholder="@아이디", value=saved_insta if saved_insta else "@")
+    
     if insta and not insta.startswith("@"):
         insta = "@" + insta
-    if st.button("로그인"):
-        if not (name and nickname and insta and insta != "@"):
-            st.error("이름, 별명, 인스타 아이디를 모두 입력해주세요.")
-        else:
-            fb = firebase()
-            if not fb:
-                st.error("데이터베이스 연결이 없습니다.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("로그인", type="primary", use_container_width=True):
+            if not (name and nickname and insta and insta != "@"):
+                st.error("이름, 별명, 인스타 아이디를 모두 입력해주세요.")
             else:
-                users = fb.get_all_users()
-                insta_clean = insta.replace("@", "").lower()
-                match = next((u for u in users if (u.get("nickname") or "").lower() == nickname.lower() and (u.get("instagram") or "").lower() == insta_clean and (u.get("name") or "").lower() == name.lower()), None)
-                if match:
-                    st.session_state.profile_data = {
-                        "user_id": match.get("user_id"), "nickname": match.get("nickname"), "instagram": match.get("instagram", ""),
-                        "grade": match.get("grade"), "gender": match.get("gender"), "mbti": match.get("mbti"), "name": match.get("name")
-                    }
-                    st.session_state.page = "home"
-                    st.success("로그인되었습니다!")
-                    st.rerun()
+                fb = firebase()
+                if not fb:
+                    st.error("데이터베이스 연결이 없습니다.")
                 else:
-                    st.error("일치하는 프로필이 없습니다.")
+                    users = fb.get_all_users()
+                    insta_clean = insta.replace("@", "").lower()
+                    match = next((u for u in users if (u.get("nickname") or "").lower() == nickname.lower() and (u.get("instagram") or "").lower() == insta_clean and (u.get("name") or "").lower() == name.lower()), None)
+                    if match:
+                        # 로그인 성공 시 입력한 정보 저장
+                        st.session_state.saved_login_name = name
+                        st.session_state.saved_login_nickname = nickname
+                        st.session_state.saved_login_insta = insta
+                        
+                        st.session_state.profile_data = {
+                            "user_id": match.get("user_id"), "nickname": match.get("nickname"), "instagram": match.get("instagram", ""),
+                            "grade": match.get("grade"), "gender": match.get("gender"), "mbti": match.get("mbti"), "name": match.get("name")
+                        }
+                        st.session_state.page = "home"
+                        st.success("로그인되었습니다!")
+                        st.rerun()
+                    else:
+                        st.error("일치하는 프로필이 없습니다.")
+    with col2:
+        if st.button("💾 저장된 정보 삭제", use_container_width=True):
+            st.session_state.saved_login_name = ""
+            st.session_state.saved_login_nickname = ""
+            st.session_state.saved_login_insta = "@"
+            st.info("저장된 로그인 정보를 삭제했습니다.")
+            st.rerun()
+    
     if st.button("← 뒤로"):
         st.session_state.page = "login_options"
         st.rerun()

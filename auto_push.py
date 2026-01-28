@@ -71,7 +71,7 @@ print()
 
 # 5. 커밋 생성
 print("[5/6] 커밋 생성...")
-commit_msg = "fix: Streamlit 웹 앱 알림 기능 개선 - 홈 화면 배지, 새로고침 버튼 추가"
+commit_msg = "feat: 로그인 정보 자동 저장 및 자동완성 기능 추가"
 result = run_git(["git", "commit", "-m", commit_msg], "커밋 생성", check=False)
 if not result:
     print("커밋할 변경사항이 없거나 이미 커밋됨.\n")
