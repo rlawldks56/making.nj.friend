@@ -1,0 +1,14 @@
+{
+  "students": [
+    {
+      "gender": "여자",
+      "grade": "1",
+      "nickname": "인라",
+      "instagram": "dsdjd",
+      "mbti": "INFJ",
+      "created_at": "2025-06-03 00:30:36",
+      "user_id": "a172d03a-bb7c-4e11-b28a-f8ef99df7820"
+    }
+  ],
+  "matchings": []
+}
